@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>⚽ Gol Ilmu PAI ⚽</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  font-family:"Comic Sans MS", Arial;
+  background:#eaf6ea;
+  text-align:center;
+}
+
+h1{margin:10px}
+
+/* ===== CREATOR ===== */
+#creator{
+  font-size:14px;
+  color:#2e7d32;
+  margin-top:-6px;
+  margin-bottom:8px;
+}
+
+/* ===== ARENA ===== */
+#arena{
+  position:relative;
+  width:900px;
+  height:380px;
+  margin:0 auto;
+  background:url('img/lapangan.png') no-repeat center/cover;
+  border:4px solid #2e7d32;
+  border-radius:14px;
+  overflow:hidden;
+}
+
+/* ===== KEEPER ===== */
+#keeper{
+  position:absolute;
+  left:385px;
+  bottom:110px;
+  width:130px;
+  transition:0.35s ease-out;
+  z-index:3;
+}
+.keeper-left{transform:translateX(-90px) translateY(20px);}
+.keeper-right{transform:translateX(90px) translateY(20px);}
+
+/* ===== KICKER ===== */
+#kicker{
+  position:absolute;
+  left:26px;
+  bottom:30px;
+  width:145px;
+  z-index:2;
+  transform-origin:bottom right;
+}
+.kick-anim{animation:kick 0.35s ease-out;}
+@keyframes kick{
+  0%{transform:rotate(0deg);}
+  50%{transform:rotate(-12deg) translateX(-6px);}
+  100%{transform:rotate(0deg);}
+}
+
+/* ===== BOLA ===== */
+#ball{
+  position:absolute;
+  width:36px;
+  transition:0.7s linear;
+  z-index:4;
+}
+
+/* ===== POPUP ===== */
+.popup{
+  position:absolute;
+  width:200px;
+  display:none;
+  z-index:5;
+  pointer-events:none;
+}
+
+/* ===== PANEL SOAL ===== */
+#panel-soal{
+  margin:20px auto;
+  width:620px;
+  background:#fff7e6;
+  border:3px solid #f9a825;
+  border-radius:14px;
+  padding:20px;
+}
+
+#soal{
+  font-size:20px;
+  margin-bottom:15px;
+}
+
+.opsi button{
+  min-width:200px;
+  margin:6px;
+  padding:14px;
+  font-size:17px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  color:#fff;
+  touch-action:manipulation;
+}
+
+#a{background:#2196f3;}
+#b{background:#4caf50;}
+#c{background:#f44336;}
+
+#skor{
+  font-size:18px;
+  margin-bottom:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>⚽ Gol Ilmu PAI ⚽</h1>
+<div id="creator"><b>Creator:</b> Kemas Sudirman – Jambi</div>
+
+<div id="arena">
+  <img id="keeper" src="img/keeper.png">
+  <img id="kicker" src="img/kicker.png">
+  <img id="ball" src="img/bola.png">
+  <img id="goalImg" class="popup" src="img/goal.png">
+  <img id="oopsImg" class="popup" src="img/tidak_goal.png">
+</div>
+
+<div id="panel-soal">
+  <div id="soal"></div>
+  <div class="opsi">
+    <button id="a" onclick="jawab('A')" ontouchstart="jawab('A')"></button>
+    <button id="b" onclick="jawab('B')" ontouchstart="jawab('B')"></button>
+    <button id="c" onclick="jawab('C')" ontouchstart="jawab('C')"></button>
+  </div>
+</div>
+
+<div id="skor">Skor: 0</div>
+
+<audio id="kick" src="audio/kick.mp3"></audio>
+<audio id="goalSound" src="audio/goal.mp3"></audio>
+<audio id="oopsSound" src="audio/oops.mp3"></audio>
+<audio id="bgm" src="audio/backsound.mp3" loop></audio>
+
+<script>
+const bankSoal=[
+ {t:"Sikap saling membantu disebut ...",o:{A:"Gotong royong",B:"Sombong",C:"Malas"},j:"A"},
+ {t:"Rukun Islam yang kedua adalah ...",o:{A:"Puasa",B:"Salat",C:"Zakat"},j:"B"},
+ {t:"Contoh tanggung jawab adalah ...",o:{A:"Mengerjakan tugas",B:"Menyontek",C:"Membolos"},j:"A"},
+ {t:"Kita harus hormat kepada ...",o:{A:"Orang tua dan guru",B:"Teman saja",C:"Diri sendiri"},j:"A"},
+ {t:"Menolong teman adalah perbuatan ...",o:{A:"Terpuji",B:"Buruk",C:"Sombong"},j:"A"},
+ {t:"Rukun Islam yang pertama adalah ...",o:{A:"Syahadat",B:"Salat",C:"Puasa"},j:"A"},
+ {t:"Berbicara sopan kepada guru adalah ...",o:{A:"Akhlak baik",B:"Akhlak buruk",C:"Biasa"},j:"A"},
+ {t:"Datang tepat waktu ke sekolah adalah ...",o:{A:"Disiplin",B:"Malas",C:"Bohong"},j:"A"},
+ {t:"Meminta maaf jika salah adalah sikap ...",o:{A:"Baik",B:"Buruk",C:"Sombong"},j:"A"},
+ {t:"Menepati janji adalah sikap ...",o:{A:"Baik",B:"Buruk",C:"Malas"},j:"A"}
+];
+
+let soalData=[], index=0, skor=0, lock=false;
+
+const ball=document.getElementById("ball");
+const keeper=document.getElementById("keeper");
+const kicker=document.getElementById("kicker");
+const goalImg=document.getElementById("goalImg");
+const oopsImg=document.getElementById("oopsImg");
+const arena=document.getElementById("arena");
+const skorEl=document.getElementById("skor");
+const bgm=document.getElementById("bgm");
+const kick=document.getElementById("kick");
+const goalSound=document.getElementById("goalSound");
+const oopsSound=document.getElementById("oopsSound");
+
+bgm.volume=0.3;
+bgm.play();
+
+function acakSoal(){
+  soalData=[...bankSoal].sort(()=>0.5-Math.random()).slice(0,10);
+}
+
+function tampilSoal(){
+  const s=soalData[index];
+  soal.innerText=s.t;
+  a.innerText="A. "+s.o.A;
+  b.innerText="B. "+s.o.B;
+  c.innerText="C. "+s.o.C;
+  reset();
+}
+
+// Fungsi jawaban
+function jawab(p){
+  if(lock) return;
+  lock=true;
+  setTimeout(()=>lock=false,1200);
+
+  kicker.classList.add("kick-anim");
+  setTimeout(()=>kicker.classList.remove("kick-anim"),350);
+
+  kick.currentTime=0;
+  kick.play();
+
+  Math.random()<0.5
+    ? keeper.classList.add("keeper-left")
+    : keeper.classList.add("keeper-right");
+
+  p===soalData[index].j
+    ? setTimeout(goal,400)
+    : setTimeout(tangkap,400);
+}
+
+// Fungsi goal
+function goal(){
+  ball.style.left="430px";
+  ball.style.bottom="210px";
+  setTimeout(()=>{
+    goalImg.style.left="50%";
+    goalImg.style.top="35%";
+    goalImg.style.transform="translate(-50%,-50%)";
+    goalImg.style.display="block";
+    goalSound.currentTime=0;
+    goalSound.play();
+    setTimeout(()=>goalSound.pause(),900);
+    skor++;
+    lanjut();
+  },600);
+}
+
+// Fungsi tangkap keeper
+function tangkap(){
+  ball.style.left="400px";
+  ball.style.bottom="160px";
+  setTimeout(()=>{
+    const k=keeper.getBoundingClientRect();
+    const a=arena.getBoundingClientRect();
+    oopsImg.style.left=(k.left-a.left-35)+"px";
+    oopsImg.style.top=(k.top-a.top-10)+"px";
+    oopsImg.style.width="220px";
+    oopsImg.style.display="block";
+    oopsSound.play();
+    lanjut();
+  },600);
+}
+
+// Fungsi reset posisi awal bola (diperbarui, geser 0,5cm ke kiri)
+function reset(){
+  const kickerRect = kicker.getBoundingClientRect();
+  const arenaRect = arena.getBoundingClientRect();
+  
+  const offsetX = 90 + 38 - 19; // Geser 0,5cm ke kiri dari posisi sebelumnya
+  const offsetY = 30;           // Sedikit di atas bottom kicker
+  
+  ball.style.left = (kickerRect.left - arenaRect.left + offsetX) + "px";
+  ball.style.bottom = (arena.clientHeight - (kickerRect.bottom - arenaRect.top) + offsetY) + "px";
+
+  keeper.className = "";
+  goalImg.style.display = "none";
+  oopsImg.style.display = "none";
+}
+
+// Fungsi lanjut ke soal berikutnya
+function lanjut(){
+  setTimeout(()=>{
+    index++;
+    if(index>=10){
+      alert("Permainan Selesai\nSkor: "+skor+"/10");
+      acakSoal();
+      index=0;
+      skor=0;
+    }
+    skorEl.innerText="Skor: "+skor;
+    tampilSoal();
+  },800);
+}
+
+// Mulai permainan
+acakSoal();
+tampilSoal();
+</script>
+
+</body>
+</html>
